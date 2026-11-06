@@ -1,0 +1,15 @@
+(pushnew :cl-raygui-examples-no-run *features*)
+(let* ((root (asdf:system-source-directory :cl-raygui))
+       (output (merge-pathnames "build/example-fasls/" root))
+       (files (directory (merge-pathnames "examples/*.lisp" root))))
+  (ensure-directories-exist output)
+  (dolist (file files)
+    ;; Loading catches package/bootstrap failures as well as reader errors.
+    (load file)
+    (multiple-value-bind (fasl warnings failure)
+        (compile-file file :output-file
+                      (merge-pathnames (make-pathname :name (pathname-name file) :type "fasl") output))
+      (declare (ignore fasl warnings))
+      (when failure (error "Example failed to compile: ~A" file))))
+  (assert files)
+  (format t "~&cl-raygui: all ~D examples loaded and compiled.~%" (length files)))

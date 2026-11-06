@@ -1,0 +1,26 @@
+;;; Exercise cleanup in the normal ASDF path and after a failed test.
+(raygui:gui-set-state raygui:+state-focused+)
+(raygui:gui-lock)
+(raygui:gui-set-style raygui:+button+ raygui:+base-color-normal+ #x12345678)
+(raygui:gui-set-tooltip "Retained before test")
+(flet ((check-state ()
+         (assert (= raygui:+state-focused+ (raygui:gui-get-state)))
+         (assert (raygui:gui-is-locked))
+         (assert (= #x12345678 (raygui:gui-get-style raygui:+button+ raygui:+base-color-normal+)))
+         (assert (string= "Retained before test"
+                         (cffi:foreign-string-to-lisp cl-raygui::*tooltip-pointer* :encoding :utf-8)))))
+  (asdf:test-system :cl-raygui)
+  (check-state)
+  (let ((original (symbol-function 'cl-raygui.tests::%run-headless-tests)))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'cl-raygui.tests::%run-headless-tests)
+                 (lambda ()
+                   (raygui:gui-set-style raygui:+button+ raygui:+base-color-normal+ 0)
+                   (raygui:gui-set-tooltip "Temporary")
+                   (error "Deliberate failure to exercise cleanup")))
+           (assert (cl-raygui.tests::signals-error-p #'cl-raygui.tests:run-tests))
+           (check-state))
+      (setf (symbol-function 'cl-raygui.tests::%run-headless-tests) original)))
+  (raygui:gui-set-tooltip nil)
+  (format t "~&cl-raygui: 9 state-isolation checks passed (success and failure paths).~%"))

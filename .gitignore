@@ -1,0 +1,6 @@
+/build/
+*.fasl
+__pycache__/
+.DS_Store
+/.qlot/
+/qlfile.lock
